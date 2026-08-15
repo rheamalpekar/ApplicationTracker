@@ -2,6 +2,9 @@
 
 An AI-assisted tool that turns a pasted job/internship posting into a structured, trackable record — built with Python and Streamlit.
 
+## Deployed App
+https://applicationtrackerbyrhea.streamlit.app/
+
 ## What it does
 
 1. Paste any job or internship posting into the text box.
