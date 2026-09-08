@@ -1,34 +1,3 @@
-"""
-Application Ledger — Python/Streamlit version (Gemini-powered)
-------------------------------------------------
-Paste a job/internship posting, and this app uses Gemini to extract
-structured fields (company, role, location, deadline, pay, key
-requirements), then runs a fuzzy duplicate check before saving.
-
-Setup:
-    pip install streamlit google-genai pandas
-
-Note: uses st.segmented_control, which requires Streamlit 1.36+.
-If it's missing, run: pip install --upgrade streamlit
-
-Run:
-    streamlit run application_tracker.py
-
-You'll need a free Gemini API key from https://aistudio.google.com/apikey
-Paste it once in the sidebar — it's saved locally next to this script and
-reused automatically on future runs. Use the "Forget saved key" button in
-the sidebar if you ever want to clear it (e.g. switching accounts).
-
-Note: Gemini's free tier has rate limits (roughly 10-15 requests per
-minute depending on the model) and Google may use free-tier requests
-to improve their models — fine for job postings, just worth knowing.
-
-Also note: Google deprecated the old `google-generativeai` package in
-favor of the unified `google-genai` SDK (this file uses the new one).
-If you previously installed `google-generativeai`, uninstall it and
-install `google-genai` instead — the two can't be mixed reliably.
-"""
-
 import json
 import os
 import re
@@ -41,27 +10,15 @@ from google import genai
 from google.genai import types
 
 # Anchor all local files to this script's own folder, not the current working
-# directory. Without this, DATA_FILE/CONFIG_FILE resolve relative to wherever
-# `streamlit run` happens to be launched from -- if that ever changes (a
-# different terminal tab, a renamed/moved folder, running via an IDE's "Run"
-# button from a different cwd), the app looks in the wrong place and can't
-# find your previously saved API key or logged applications. This was the
-# root cause of the key being "forgotten" between runs.
+# directory. 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "applications.json"
 CONFIG_FILE = BASE_DIR / ".app_config.json"  # stores the API key locally — keep this out of git (see .gitignore)
 
 # Cap on how many characters of a pasted posting we'll send to Gemini.
-# Very long postings (a full page with boilerplate/legal text) can push the
-# prompt past what the model handles well and cause a malformed/empty
-# response, which crashed extraction. Trimming keeps requests reliable and
-# cheap; the fields we care about (title, comp, requirements, deadline) are
-# almost always in the first chunk of a posting anyway.
+
 MAX_POSTING_CHARS = 6000
-# Pinned to the model confirmed available in Google AI Studio as of Aug 2026.
-# Note: this is a "preview" model, which Google can deprecate with as little
-# as 2 weeks' notice — if this breaks again later, check aistudio.google.com's
-# model picker for the current name and swap it in here.
+
 MODEL = "gemini-3-flash-preview"
 
 COMPANY_MATCH_THRESHOLD = 0.82
@@ -168,8 +125,7 @@ div[class*="st-key-card_"] code {
 """
 
 
-# ---------- Local persistence ----------
-
+#local persistance of applications and API key
 def load_applications():
     if DATA_FILE.exists():
         try:
@@ -201,8 +157,7 @@ def clear_saved_api_key():
         CONFIG_FILE.unlink()
 
 
-# ---------- Fuzzy matching (Levenshtein-based, no extra dependency) ----------
-
+#fuzzy string matching for duplicate detection
 def levenshtein(a: str, b: str) -> int:
     m, n = len(a), len(b)
     if m == 0:
@@ -239,8 +194,7 @@ def find_duplicate(apps, company, role):
     return None
 
 
-# ---------- Gemini extraction ----------
-
+#gemini extraction of posting details
 def extract_posting(api_key: str, posting_text: str) -> dict:
     prompt = f"""Extract the application details from this job/internship posting and respond with ONLY a raw JSON object, no markdown fences, no preamble, no explanation — just the JSON.
 
@@ -269,8 +223,7 @@ Posting:
     return json.loads(cleaned)  # raises json.JSONDecodeError if malformed — caught by caller
 
 
-# ---------- CSV export ----------
-
+#csv export of logged applications
 def apps_to_dataframe(apps):
     rows = []
     for a in apps:
@@ -289,8 +242,7 @@ def apps_to_dataframe(apps):
     return pd.DataFrame(rows)
 
 
-# ---------- Streamlit UI ----------
-
+#streamlit
 def main():
     st.set_page_config(page_title="Application Ledger", page_icon="🎫", layout="centered")
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -316,14 +268,12 @@ def main():
     )
     st.caption("Paste a posting → We extract the details → logged locally.")
 
-    # --- API key (loaded silently in the background, no UI clutter) ---
     env_key = os.environ.get("GEMINI_API_KEY", "")
     saved_key = load_saved_api_key()
     api_key = env_key or saved_key
 
     with st.sidebar:
         if not api_key:
-            # Fallback only shown the very first time, before any key has been saved.
             st.subheader("Gemini API Key")
             api_key = st.text_input(
                 "API key",
@@ -356,7 +306,6 @@ def main():
                 mime="text/csv",
             )
 
-    # --- Input box (wrapped in a form so one click submits the text + triggers extraction together) ---
     with st.form(key="posting_form", clear_on_submit=False):
         posting_text = st.text_area(
             "Paste a job or internship posting",
@@ -416,7 +365,6 @@ def main():
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    # --- Duplicate confirmation ---
     if st.session_state.pending_dup:
         dup = st.session_state.pending_dup
         st.warning(
@@ -433,7 +381,7 @@ def main():
 
     st.divider()
 
-    # --- Ledger ---
+   #ledger
     if not st.session_state.apps:
         st.info("No applications logged yet. Paste your first posting above.")
 
