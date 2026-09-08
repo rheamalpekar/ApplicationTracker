@@ -1,0 +1,5 @@
+applications.json
+.app_config.json
+venv/
+__pycache__/
+*.pyc
